@@ -28,10 +28,12 @@ app.post("/targets", async (req, res) => {
   const { type, value } = req.body || {};
   if (!["domain", "ip", "keyword", "x"].includes(type)) return res.status(400).send("bad type");
   if (!value || String(value).length > 255) return res.status(400).send("bad value");
+
   await pool.query(
     "INSERT INTO targets(type,value) VALUES(?,?) ON DUPLICATE KEY UPDATE is_enabled=1",
     [type, String(value).trim()]
   );
+
   res.json({ ok: true });
 });
 
@@ -99,31 +101,37 @@ app.post("/run/target/:id", async (req, res) => {
   const [rows] = await pool.query("SELECT * FROM targets WHERE id=?", [id]);
   const t = rows[0];
   if (!t) return res.status(404).send("not found");
+
   const f = await runTarget(t);
   await writeFindings(t, f);
+
   res.json({ ok: true, count: f.length });
 });
 
 app.post("/run/all", async (req, res) => {
   const [rows] = await pool.query("SELECT * FROM targets WHERE is_enabled=1 ORDER BY id DESC");
   let total = 0;
+
   for (const t of rows) {
     const f = await runTarget(t);
     await writeFindings(t, f);
     total += f.length;
   }
+
   res.json({ ok: true, total });
 });
 
 app.get("/cron/run", requireToken, async (req, res) => {
   const [rows] = await pool.query("SELECT * FROM targets WHERE is_enabled=1");
-  let ran = 0, total = 0;
+  let ran = 0,
+    total = 0;
 
   for (const t of rows) {
     const [d] = await pool.query(
       "SELECT TIMESTAMPDIFF(MINUTE, COALESCE(?, '1970-01-01'), NOW()) as diff",
       [t.last_run_at]
     );
+
     if (Number(d[0].diff) < Number(t.interval_min)) continue;
 
     const f = await runTarget(t);
@@ -136,17 +144,4 @@ app.get("/cron/run", requireToken, async (req, res) => {
 });
 
 const port = Number(process.env.PORT || 3000);
-app.listen(port, () => console.log("iamx api listening", port));
-
-const express = require("express");
-const app = express();
-
-app.get("/health", (req, res) => {
-  res.json({ ok: true });
-});
-
-app.listen(3000, () => {
-  console.log("Server running");
-
-});
-
+app.listen(port, "0.0.0.0", () => console.log("iamx api listening", port));
