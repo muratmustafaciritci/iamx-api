@@ -1,3 +1,5 @@
+process.on("unhandledRejection", (err) => console.error("unhandledRejection", err));
+process.on("uncaughtException", (err) => console.error("uncaughtException", err));
 import "dotenv/config";
 import express from "express";
 import { makePool } from "./db.js";
@@ -150,4 +152,5 @@ app.get("/cron/run", requireToken, async (req, res) => {
 
 const port = Number(process.env.PORT || 3000);
 app.listen(port, "0.0.0.0", () => console.log("iamx api listening", port));
+
 
