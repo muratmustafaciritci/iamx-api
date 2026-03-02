@@ -20,8 +20,13 @@ app.get("/", (_, res) => res.json({ ok: true, service: "iamx-api" }));
 app.get("/health", (_, res) => res.json({ ok: true }));
 
 app.get("/targets", async (_, res) => {
-  const [rows] = await pool.query("SELECT * FROM targets ORDER BY created_at DESC");
-  res.json({ targets: rows });
+  try {
+    const [rows] = await pool.query("SELECT * FROM targets ORDER BY created_at DESC");
+    res.json({ targets: rows });
+  } catch (e) {
+    console.error("GET /targets error:", e);
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 
 app.post("/targets", async (req, res) => {
@@ -145,3 +150,4 @@ app.get("/cron/run", requireToken, async (req, res) => {
 
 const port = Number(process.env.PORT || 3000);
 app.listen(port, "0.0.0.0", () => console.log("iamx api listening", port));
+
